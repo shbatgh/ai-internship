@@ -3,7 +3,6 @@
 
 # Preprocessing to get bounding boxes of images of cells
 
-
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -17,21 +16,22 @@ from torchvision.utils import draw_bounding_boxes
 from torchvision.ops import masks_to_boxes
 import torch
 from torchvision.io import read_image
+from torch.nn.functional import normalize
 
 ### Store the path of all the images in a folder to an array
 images_path = []
 
 def get_images_path():
+    global images_path
+
     path = '/home/sam/dev/ai-internship/cell_images'
 
     for files in os.listdir(path):
         images_path.append(files)
 
-
-
     for c, t in enumerate(images_path):
         images_path[c] = t[:-4]
-        #images_path[c] = int(images_path[c])
+        images_path[c] = int(images_path[c])
 
     images_path.sort()
 
@@ -40,16 +40,14 @@ def get_images_path():
 
     return images_path
 
-print(images_path)
-
-
 ### Store all the images into a PIL image format
+images = []
 
 def get_images():
-    images = []
+    global images
 
-    for image in range(len(get_images_path())):
-        images.append(np.array(Image.open(get_images_path()[image])))
+    for image in range(len(images_path)):
+        images.append(np.array(Image.open(images_path[image])))
 
     return images
 
@@ -81,16 +79,17 @@ labeled_images = []
 indices = []
 
 def get_labeled_images():
+    global labeled_images, indices
+
     num_labeled_images = 0
 
-    for i in range(len(get_images().images)):
-        temp_image = preprocessing(get_images().images[i], 40, 150)
+    for i in range(len(images)):
+        temp_image = preprocessing(images[i], 40, 150)
         if num_features(temp_image) == num_cells[i]:
             num_labeled_images += 1
             #print(i)
             labeled_images.append(temp_image)
             indices.append(i)
-
     print("Labeled images: " + str(num_labeled_images))
 
     return labeled_images
@@ -115,15 +114,14 @@ def black_white():
         image = otsu(image, threshold)
 
 boxes_list = []
+c = 0
 
 def get_boxes_info():
-    c = 0
+    global boxes_list, c
 
     for image in labeled_images:
         test = image
         test = torch.from_numpy(test)
-
-        t_image = read_image(images_path[indices[c]])
 
         obj_ids = torch.unique(test)
         obj_ids = obj_ids[1:]
@@ -134,18 +132,23 @@ def get_boxes_info():
 
         c += 1
 
+    return boxes_list
+
+print(len(boxes_list))
+
+normalized_boxes = []
+
 ### Normalize boxes information to one
+def normalize_boxes():
+    global normalized_boxes
 
-
-from torch.nn.functional import normalize
-
-def normalize():
     for box in range(len(boxes_list)):
-        boxes_list[box] = normalize(boxes_list[box], p=1.0, dim=1)
+        normalized_boxes.append(normalize(boxes_list[box], p=1.0, dim=1))
+    #    boxes_list[box] = normalize(boxes_list[box], p=1.0, dim=1)
 
+    return boxes_list
 
 ### Write box information to txt files
-
 def write_box_info_to_file():
     n = 0
 
@@ -171,19 +174,41 @@ def write_images_to_folder():
         #image = Image.fromarray(image)
         #image.save("temp/" + str(c) + ".png")
 
+def show_drawn_boxes(image_number):
+    test = preprocessing(images[image_number], 40, 150)
+    test = torch.from_numpy(test)
+
+    t_image = read_image("cell_images/{image_number}.png".format(image_number=image_number))
+
+    obj_ids = torch.unique(test)
+    obj_ids = obj_ids[1:]
+    test = test == obj_ids[:, None, None]
+
+    boxes = masks_to_boxes(test)
+    drawn_boxes = draw_bounding_boxes(t_image, boxes, colors="red")
+
+    show(drawn_boxes)
+
 def main():
     get_images_path()
     get_images()
-    preprocessing()
     get_labeled_images()
-    show()
     black_white()
     get_boxes_info()
-    normalize()
+    normalize_boxes()
     write_box_info_to_file()
     write_images_to_folder()
+
+#main()
 
 if __name__ == "__main__":
     main()
     print("SUCCESSFUL")
-
+    print(len(labeled_images))
+else:
+    get_images_path()
+    get_images()
+    get_labeled_images()
+    black_white()
+    get_boxes_info()
+    normalize_boxes()
