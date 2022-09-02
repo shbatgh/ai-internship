@@ -90,7 +90,7 @@ def get_labeled_images():
             #print(i)
             labeled_images.append(temp_image)
             indices.append(i)
-    print("Labeled images: " + str(num_labeled_images))
+    #print("Labeled images: " + str(num_labeled_images))
 
     return labeled_images
 
@@ -109,9 +109,11 @@ def show(imgs):
 
 ### Make everything that isn't black white
 def black_white():
-    for image in labeled_images:
+    for image in range(len(labeled_images)):
         threshold = 0.1
-        image = otsu(image, threshold)
+        labeled_images[image] = labeled_images[image] < threshold
+
+    return labeled_images
 
 boxes_list = []
 c = 0
@@ -121,6 +123,7 @@ def get_boxes_info():
 
     for image in labeled_images:
         test = image
+        #print(test, type(test))
         test = torch.from_numpy(test)
 
         obj_ids = torch.unique(test)
@@ -134,29 +137,29 @@ def get_boxes_info():
 
     return boxes_list
 
-print(len(boxes_list))
+#print(len(boxes_list))
 
 normalized_boxes = []
 
 ### Normalize boxes information to one
-def normalize_boxes():
+def normalize_boxes(boxes):
     global normalized_boxes
 
-    for box in range(len(boxes_list)):
-        normalized_boxes.append(normalize(boxes_list[box], p=1.0, dim=1))
+    for box in range(len(boxes)):
+        normalized_boxes.append(normalize(boxes[box], p=1.0, dim=1))
     #    boxes_list[box] = normalize(boxes_list[box], p=1.0, dim=1)
 
     return boxes_list
 
 ### Write box information to txt files
-def write_box_info_to_file():
+def write_box_info_to_file(boxes):
     n = 0
 
-    for c, i in enumerate(boxes_list):
+    for c, i in enumerate(boxes):
         for c2, j in enumerate(i):
             for k in j:
                 w = str(k.item()) + " "
-                filename = "cell_labels/" + str(c) + ".txt"
+                filename = "data/labels/" + str(c) + ".txt"
                 f = open(filename, "a")
                 if n % 4 == 0 and n != 0:
                     f.write("\n")
@@ -164,6 +167,7 @@ def write_box_info_to_file():
 
                 f.write(w)
                 n += 1
+    print("UPDATE")
 
 
 ### Write images to a folder
@@ -178,7 +182,7 @@ def show_drawn_boxes(image_number):
     test = preprocessing(images[image_number], 40, 150)
     test = torch.from_numpy(test)
 
-    t_image = read_image("cell_images/{image_number}.png".format(image_number=image_number))
+    t_image = read_image("data/images/train/{image_number}.png".format(image_number=image_number))
 
     obj_ids = torch.unique(test)
     obj_ids = obj_ids[1:]
@@ -193,10 +197,10 @@ def main():
     get_images_path()
     get_images()
     get_labeled_images()
-    black_white()
+    #black_white()
     get_boxes_info()
-    normalize_boxes()
-    write_box_info_to_file()
+    normalize_boxes(boxes_list)
+    write_box_info_to_file(boxes_list)
     write_images_to_folder()
 
 #main()
@@ -204,11 +208,10 @@ def main():
 if __name__ == "__main__":
     main()
     print("SUCCESSFUL")
-    print(len(labeled_images))
+    #print(len(labeled_images))
 else:
     get_images_path()
     get_images()
     get_labeled_images()
-    black_white()
+    #black_white()
     get_boxes_info()
-    normalize_boxes()
